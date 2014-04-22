@@ -10,19 +10,7 @@ Ext.define('CustomApp', {
                     fieldLabel: 'select project',
                         listeners:{
                             change: function(combobox){
-                                if (!this.down('#u')) {
-                                    this._onProjectSelected(combobox.getSelectedRecord());
-                                }
-                                else{
-                                    if ( this.down('#g')) {
-                                        console.log('grid exists');
-                                        Ext.getCmp('g').destroy();
-                                         console.log('grid deleted');
-                                    }
-                                    Ext.getCmp('u').destroy();
-                                    console.log('user picker deleted');
-                                    this._onProjectSelected(combobox.getSelectedRecord());
-                                }
+				this._onProjectSelected(combobox.getSelectedRecord());
                             },
                             scope: this
                         }
@@ -33,25 +21,37 @@ Ext.define('CustomApp', {
         },
         
         _onProjectSelected:function(record){
-            var project = record.data['_ref'];
-            console.log('project', project);
+            this._project = record.data['_ref'];
+            console.log('project:', this._project);
+	    /*
+           var filter = Ext.create('Rally.data.QueryFilter', {
+                                property: 'Role',
+                                operator: '=',
+                                value: 'Developer'
+            });*/
+	    
+	    
+	     if (!this.down('#userBox')) {
+		var u = Ext.create('Rally.ui.combobox.UserSearchComboBox',{ 
+		  itemId: 'userBox',
+		  project: this._project,      //The ref of a project to load editors and team members from.
+		  fieldLabel: 'select user',
+		  listeners:{
+			     ready: function(combobox){
+				  this._onUserSelected(combobox.getRecord());
+			     },
+			     select: function(combobox){
+				  this._onUserSelected(combobox.getRecord());
+			     },
+			     scope: this
+		     }
+		});
+		this.add(u);
+	    }
+	    else{
+		this._onUserSelected(this.down('#userBox').getRecord());
+	    }
             
-            
-            var u = Ext.create('Rally.ui.combobox.UserSearchComboBox',{ //'Rally.ui.combobox.UserComboBox'
-                id: 'u',
-                project: project,
-                fieldLabel: 'select user',
-                listeners:{
-                           ready: function(combobox){
-                                this._onUserSelected(combobox.getRecord());
-                           },
-                           select: function(combobox){
-                                this._onUserSelected(combobox.getRecord());
-                           },
-                           scope: this
-                   }
-            });
-            this.add(u);
         },
         
         _onUserSelected:function(record){
@@ -63,6 +63,11 @@ Ext.define('CustomApp', {
    			    property: 'Owner',
 			    operator: '=',
 			    value: user
+   			},
+			{
+   			    property: 'Project',
+			    operator: '=',
+			    value: this._project
    			}
 		];
 		
@@ -70,18 +75,9 @@ Ext.define('CustomApp', {
 		{
 		    models: ['UserStory', 'Defect', 'TestCase', 'Task'],
 		    pageSize: 200,
-		    remoteSort: false,
 		    limit: Infinity,
-		    fetch: ['Name','FormattedID','LastUpdateDate', 'ScheduleState', 'State'],
-		    filters: this._filters,
-		    sorters: [
-			{
-			    property: 'FormattedID',
-			    direction: 'ASC'
-			}
-			
-			
-		    ]
+		    fetch: ['DragAndDropRank', 'Name','FormattedID','LastUpdateDate', 'ScheduleState', 'State', 'Project'],
+		    filters: this._filters
 		};
 		
 		this._updateGrid(storeConfig);
@@ -101,13 +97,16 @@ Ext.define('CustomApp', {
    },
         _createGrid: function(storeConfig){
 	this._myGrid = Ext.create('Rally.ui.grid.Grid', {
+	        enableRanking: true,
 		storeConfig: storeConfig,
    		columnCfgs: [
+		        {dataIndex: 'DragAndDropRank',maxWidth: 50},
    		        {text: 'ID', dataIndex: 'FormattedID', xtype: 'templatecolumn',
                             tpl: Ext.create('Rally.ui.renderer.template.FormattedIDTemplate')},
    			{text: 'Name', dataIndex: 'Name'},
 			{text: 'ScheduleState', dataIndex: 'ScheduleState'},
 			{text: 'State', dataIndex: 'State'},
+			{text: 'Project', dataIndex: 'Project'},
 			{text: 'LastUpdateDate', dataIndex: 'LastUpdateDate'}
    		]
    	});
